@@ -1,7 +1,11 @@
 import { DataSource, Repository } from 'typeorm';
 import { Task } from './task.entity';
 // import { InjectRepository } from '@nestjs/typeorm';
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { TaskStatus } from 'src/shared/enums/task-status.enum';
 import { GetTasksFilterDto } from './dto/get-tasks-filter.dto';
@@ -10,6 +14,7 @@ import { User } from 'src/auth/user.entity';
 // Inheritance
 @Injectable()
 export class TaskRepository extends Repository<Task> {
+  private logger = new Logger('TasksRepository');
   constructor(private dataSource: DataSource) {
     super(Task, dataSource.createEntityManager());
   }
@@ -38,8 +43,14 @@ export class TaskRepository extends Repository<Task> {
       );
     }
 
-    const tasks = await query.getMany();
-    return tasks;
+    try {
+      const tasks = await query.getMany();
+      return tasks;
+    } catch (error: any) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      this.logger.error('error', error.stack);
+      throw new InternalServerErrorException();
+    }
   }
 
   async findTask(id: string, user: User): Promise<Task | null> {
